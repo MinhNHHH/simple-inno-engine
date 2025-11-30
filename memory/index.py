@@ -18,6 +18,7 @@ class BTreeNode:
         return len(self.keys) == 2 * self.t - 1
 
     def find_key_index(self, k):
+        print("keys, [find_key_index]", self.keys, k)
         # return the index of the first key >= k
         idx = 0
         while idx < len(self.keys) and self.keys[idx] < k:

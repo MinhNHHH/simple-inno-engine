@@ -49,7 +49,6 @@ class BufferPool:
             self._evict_page()
         self._add_node(node)
         self.pages[page.page_id] = node
-        print(self.pages)
 
     def _move_to_head(self, node: PageNode) -> None:
         self._remove_node(node)
@@ -77,7 +76,7 @@ class BufferPool:
             raise Exception("Page is pinned and cannot be evicted")
 
         if lru.page.dirty:
-            self.disk.add_page(lru.page.page_id, lru.page)  # flush before eviction
+            self.disk.write_page(lru.page)  # flush before eviction
             self.mark_dirty(lru.page.page_id)
         self._remove_node(lru)
         del self.pages[lru.page.page_id]

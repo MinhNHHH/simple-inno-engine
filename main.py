@@ -1,4 +1,4 @@
-from database.db import InnoEngine
+from engine.engine import InnoEngine
 from memory.pages import Page
 
 def main():
@@ -34,10 +34,11 @@ def main():
     #     page_lsn=100
     # )
 
-    engine.insert_page((0, "Alice"))
-    engine.insert_page((1, "Bob"))
-    engine.insert_page((2, "Carol"))
-    engine.insert_page((3, "Dave"))
+    data = [(1, "Bob"), (2, "Carol"), (3, "Dave"), (4, "Eve"), (5, "Frank"), (6, "George"), (7, "Harry"), (8, "Ivy"), (9, "Jack"), (10, "Lily"), (11, "Mason"), (12, "Nathan"), (13, "Olivia"), (14, "Paul"), (15, "Quincy"), (16, "Ryan"), (17, "Sarah"), (18, "Thomas"), (19, "Uma"), (20, "Victoria"), (21, "William"), (22, "Xavier"), (23, "Yara"), (24, "Zara")]
+    # data = [(0, "Alice"), (1, "Bob"), (2, "Carol"), (3, "Dave"), (4, "Eve")]
+    for row in data:
+        engine.insert_page(row)
+    print(engine.buffer_pool.load_page(0).rows)
     # print(engine.get_row(1))
     # print(engine.get_row(2))
     # print(engine.get_row(3))

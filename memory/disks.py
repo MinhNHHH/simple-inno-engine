@@ -1,0 +1,46 @@
+from memory.pages import Page
+import copy
+
+class Disk:
+    def __init__(self):
+        self.pages : dict[int, Page] = {}  # page_id -> Page
+
+    def get_page(self, page_id: int) -> Page:
+        if page_id not in self.pages:
+            raise Exception(f"Page {page_id} not found on disk")
+        # Return a deep copy of the page to avoid modifying the original page
+        return copy.deepcopy(self.pages[page_id])
+
+    def write_page(self, page: Page) -> None:
+        # the disk must store its own independent copy of the page, unaffected by later in-memory modifications.
+        self.pages[page.page_id] = copy.deepcopy(page)
+        self.dump_to_json()
+        
+    def delete_page(self, page_id: int) -> None:
+        if page_id not in self.pages:
+            raise Exception(f"Page {page_id} not found on disk")
+        del self.pages[page_id]
+
+    # Store all disk pages into a JSON file called 'disk.json'
+    def dump_to_json(self, filename="disk.json"):
+        import json
+        # Prepare serializable dict: page_id -> page content as dict
+        def page_to_dict(page):
+            d = {"page_id": page.page_id}
+            # Dump other attributes if they exist
+            for attr in dir(page):
+                if attr.startswith("_") or attr in ("page_id", "pinned", "pin_count", "dirty"):
+                    continue
+                v = getattr(page, attr)
+                # Try to serialize basic types, skip un-serializable fields
+                if isinstance(v, (int, str, list, dict, float, bool, type(None))):
+                    d[attr] = v
+            # Optionally include state
+            d["pinned"] = getattr(page, "pinned", False)
+            d["pin_count"] = getattr(page, "pin_count", 0)
+            d["dirty"] = getattr(page, "dirty", False)
+            return d
+
+        serializable = {pid: page_to_dict(page) for pid, page in self.pages.items()}
+        with open(filename, "w") as f:
+            json.dump(serializable, f, indent=4)

@@ -1,0 +1,41 @@
+{
+    "1": {
+        "page_id": 1,
+        "page_lsn": 101,
+        "rows": {
+            "0": [
+                0,
+                "Alice"
+            ]
+        },
+        "pinned": false,
+        "pin_count": 0,
+        "dirty": false
+    },
+    "2": {
+        "page_id": 2,
+        "page_lsn": 101,
+        "rows": {
+            "0": [
+                2,
+                "Carol"
+            ]
+        },
+        "pinned": false,
+        "pin_count": 0,
+        "dirty": false
+    },
+    "3": {
+        "page_id": 3,
+        "page_lsn": 101,
+        "rows": {
+            "0": [
+                3,
+                "Dave"
+            ]
+        },
+        "pinned": false,
+        "pin_count": 0,
+        "dirty": false
+    }
+}

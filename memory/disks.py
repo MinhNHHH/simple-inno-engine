@@ -14,7 +14,7 @@ class Disk:
     def write_page(self, page: Page) -> None:
         # the disk must store its own independent copy of the page, unaffected by later in-memory modifications.
         self.pages[page.page_id] = copy.deepcopy(page)
-        self.dump_to_json()
+        return
         
     def delete_page(self, page_id: int) -> None:
         if page_id not in self.pages:

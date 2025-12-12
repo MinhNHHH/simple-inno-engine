@@ -6,7 +6,7 @@ from memory.undo_log import UndoLog
 from memory.transactions import TransactionTable
 from memory.locks import LockTable
 from memory.double_write_buffer import DoublewriteBuffer
-from memory.index import BTree
+from memory.index import BPlusTree
 
 class InnoEngine:
     def __init__(self):
@@ -17,7 +17,7 @@ class InnoEngine:
         self.tx_table = TransactionTable()
         self.lock_table = LockTable()
         self.doublewrite_buffer = DoublewriteBuffer()
-        self.index = BTree(t=2)
+        self.index = BPlusTree(t=2)
         self.next_lsn = 101
         self.next_txid = 1
 
@@ -73,3 +73,6 @@ class InnoEngine:
             self.buffer_pool.mark_dirty(page_id)
             self.buffer_pool.release_page(page_id)
             self.disk.write_page(page)
+        # flush all dirty pages to disk
+        self.buffer_pool.mark_clean_and_flush()
+        self.disk.dump_to_json("disk.json")

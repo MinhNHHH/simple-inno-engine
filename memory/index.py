@@ -1,16 +1,16 @@
-# B-Tree (CLRS-style) implementation in Python (visible to user)
+# BPlusTree (CLRS-style) implementation in Python (visible to user)
 # Features:
-# - BTreeNode and BTree classes
+# - BPlusTreeNode and BTree classes
 # - search, insert, split_child, insert_non_full
 # - pretty_print to show tree structure by levels
 # - demo usage with inserts and searches
 
 
-class BTreeNode:
+class BPlusTreeNode:
     def __init__(self, t, leaf=False):
         self.t = t  # minimum degree (defines the range for number of keys)
         self.keys : list[int] = []  # list of ids
-        self.children : list[BTreeNode] = []  # list of child pointers (BTreeNode instances)
+        self.children : list[BPlusTreeNode] = []  # list of child pointers (BPlusTreeNode instances)
         self.leaf = leaf  # is true when node is leaf. Otherwise false.
 
     def is_full(self):
@@ -25,14 +25,27 @@ class BTreeNode:
             idx += 1
         return idx
 
-class BTree:
+class BPlusTree:
+    """
+    BTree is a B-Tree implementation for indexing rows in the database.
+    It is used to store the page_id of the rows in the database.
+
+    BTree work:
+        - When a row is inserted, the page_id is inserted into the BTree.
+        - When a row is deleted, the page_id is deleted from the BTree.  // not implemented
+        - When a row is updated, the page_id is updated in the BTree.
+        - When a row is searched, the page_id is searched in the BTree.
+        - When a row is traversed, the page_ids are traversed in the BTree.
+        - When a BTree is dumped to JSON, the BTree is dumped to a JSON file.
+        - When a BTree is loaded from JSON, the BTree is loaded from a JSON file.
+    """
     def __init__(self, t):
         if t < 2:
             raise ValueError("Minimum degree t must be at least 2")
         self.t = t
-        self.root = BTreeNode(t, leaf=True)
+        self.root = BPlusTreeNode(t, leaf=True)
 
-    def search(self, node: BTreeNode, k: int) -> tuple[BTreeNode, int]:
+    def search(self, node: BPlusTreeNode, k: int) -> tuple[BPlusTreeNode, int]:
         """Search key k starting from node. Returns (node, index) or (None, None) if not found."""
         i = node.find_key_index(k)
         # If found in this node
@@ -44,11 +57,11 @@ class BTree:
         # Otherwise go to the appropriate child
         return self.search(node.children[i], k)
 
-    def split_child(self, parent: BTreeNode, i: int) -> None:
+    def split_child(self, parent: BPlusTreeNode, i: int) -> None:
         # Corrected split_child implementation capturing median key properly
         t = self.t
         full_child = parent.children[i]
-        new_child = BTreeNode(t, leaf=full_child.leaf)
+        new_child = BPlusTreeNode(t, leaf=full_child.leaf)
         median = t - 1
     
         # capture median key
@@ -73,7 +86,7 @@ class BTree:
         root = self.root
         # if root is full, tree grows in height
         if root.is_full():
-            new_root = BTreeNode(self.t, leaf=False)
+            new_root = BPlusTreeNode(self.t, leaf=False)
             new_root.children.append(root)
             self.split_child(new_root, 0)
             self.root = new_root
@@ -119,7 +132,7 @@ class BTree:
     def pretty_print(self):
         """Print the tree level by level (keys only)"""
         from collections import deque
-        q = deque[tuple[BTreeNode, int]]([(self.root, 0)])
+        q = deque[tuple[BPlusTreeNode, int]]([(self.root, 0)])
         last_level = 0
         lines = []
         while q:
@@ -142,6 +155,7 @@ class BTree:
         def node_to_dict(node):
             d = {
                 "keys": node.keys,
+                "values": node.values,
                 "leaf": node.leaf
             }
             if not node.leaf:
@@ -153,14 +167,14 @@ class BTree:
             json.dump(tree_dict, f, indent=4)
     
     @classmethod
-    def load_from_json(cls, filename: str) -> 'BTree':
+    def load_from_json(cls, filename: str) -> 'BPlusTree':
         """
-        Load and restore a BTree structure from a JSON file and return a new BTree instance.
+        Load and restore a BPlusTree structure from a JSON file and return a new BTree instance.
         """
         import json
 
         def dict_to_node(d, t):
-            node = BTreeNode(t, leaf=d["leaf"])
+            node = BPlusTreeNode(t, leaf=d["leaf"])
             node.keys = d["keys"]
             if not d["leaf"]:
                 node.children = [dict_to_node(child, t) for child in d["children"]]
@@ -179,15 +193,15 @@ class BTree:
                 inferred_t = (n_keys + 1) // 2
                 if inferred_t < 2:
                     inferred_t = 2
-            btree = cls(t=inferred_t)
-            btree.root = dict_to_node(tree_dict, inferred_t)
-            return btree
+            b_plus_tree = cls(t=inferred_t)
+            b_plus_tree.root = dict_to_node(tree_dict, inferred_t)
+            return b_plus_tree
 
 # Demo
 if __name__ == "__main__":
     # Minimum degree t = 2 => max keys per node = 3 (2*t - 1)
     t = 2
-    b = BTree(t)
+    b = BPlusTree(t)
 
     # Insert a sequence of keys and print tree after each insert
     demo_keys = [10, 20, 5, 6, 12, 30, 7, 17]

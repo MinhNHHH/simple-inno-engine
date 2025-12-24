@@ -1,37 +1,46 @@
 from engine.engine import InnoEngine
-from memory.pages import Page
 
 def main():
     engine = InnoEngine()
     
-    data = [(1, "Bob"), (2, "Carol"), (3, "Dave"), (4, "Eve"), (5, "Frank"), 
-            (6, "George"), (7, "Harry"), (8, "Ivy"), (9, "Jack"), (10, "Lily"), 
-            (11, "Mason"), (12, "Nathan"), (13, "Olivia"), (14, "Paul"), 
-            (15, "Quincy"), (16, "Ryan"), (17, "Sarah"), (18, "Thomas"), 
-            (19, "Uma"), (20, "Victoria"), (21, "William"), (22, "Xavier"), 
-            (23, "Yara"), (24, "Zara")]
+    print("=== Inserting 24 rows ===\n")
+    data = [
+        (1, "Bob"), (2, "Carol"), (3, "Dave"), (4, "Eve"), (5, "Frank"), 
+        (6, "George"), (7, "Harry"), (8, "Ivy"), (9, "Jack"), (10, "Lily"), 
+        (11, "Mason"), (12, "Nathan"), (13, "Olivia"), (14, "Paul"), 
+        (15, "Quincy"), (16, "Ryan"), (17, "Sarah"), (18, "Thomas"), 
+        (19, "Uma"), (20, "Victoria"), (21, "William"), (22, "Xavier"), 
+        (23, "Yara"), (24, "Zara")
+    ]
     
     for row in data:
-        engine.insert_page(row)
+        engine.insert_row(row)
     
-    # # ✅ Test retrieving specific rows
-    # print("\n=== Testing row retrieval ===")
-    # print("Row 1:", engine.get_row(1))
-    # print("Row 2:", engine.get_row(2))
-    # print("Row 10:", engine.get_row(10))
+    print(engine.index.pretty_print())
+    #Test retrieving specific rows
+    print("\n=== Testing row retrieval ===")
+    test_rows = [1, 5, 10, 15, 20, 24]
+    for row_id in test_rows:
+        row = engine.get_row(row_id)
+        print(f"Row {row_id}: {row}")
     
-    # # ✅ Check which pages exist
-    # print("\n=== Pages on disk ===")
-    # print(f"Total pages: {len(engine.disk.pages)}")
-    # print(f"Page IDs: {sorted(engine.disk.pages.keys())}")
+    # Check B+Tree structure
+    print("\n=== B+Tree Structure ===")
+    engine.index.pretty_print()
     
-    # ✅ Load a specific page that exists
-    print("\n=== Page 1 contents ===")
-    print(engine.buffer_pool.load_page(1).rows)
-    engine.buffer_pool.release_page(1)
-    print("\n=== Page 0 contents ===")
-    print(engine.buffer_pool.load_page(2).rows)
-    engine.buffer_pool.release_page(2)
+    # Show all mappings
+    print("\n=== All row_id → page_id mappings ===")
+    mappings = engine.index.traverse()
+    for row_id, page_id in mappings:
+        print(f"  Row {row_id} → Page {page_id}")
+    
+    # Shutdown and save
+    print()
+    engine.shutdown()
+
+    print()
+    # Print stats
+    engine.print_stats()
 
 if __name__ == "__main__":
     main()

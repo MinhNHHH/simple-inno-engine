@@ -103,11 +103,6 @@ class BufferPool:
             raise Exception("Page not found in buffer pool")
         self.pages[page_id].page.dirty = True
     
-    def mark_clean(self, page_id: int) -> None:
-        if page_id not in self.pages:
-            raise Exception("Page not found in buffer pool")
-        self.pages[page_id].page.dirty = False
-    
     def mark_clean_and_flush(self) -> None:
         for page_id in self.pages:
             page = self.pages[page_id].page

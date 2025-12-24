@@ -167,3 +167,5 @@ cython_debug/
 /model
 
 test.py
+
+*.json

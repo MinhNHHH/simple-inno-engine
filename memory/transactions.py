@@ -3,8 +3,8 @@ from threading import Lock
 from typing import Optional, Any
 from enum import Enum
 
-from memory.undo_record import UndoRecord
-from memory.redo_record import RedoRecord
+from memory.undo_record import UndoRecord, UndoRecordModel
+from memory.redo_record import RedoRecord, RedoLogRecordModel
 from memory.locks import LockTable
 
 class TransactionStatus(Enum):
@@ -27,7 +27,6 @@ class TransactionTableEntry(BaseModel):
 class TransactionTable:
     """
     Transaction Table - tracks all active and recent transactions
-    Thread-safe for concurrent access
     """
     
     def __init__(self):
@@ -44,8 +43,6 @@ class TransactionTable:
         with self.lock:
             if txid in self.active:
                 self.active[txid].status = TransactionStatus.COMMITTED.value
-                # In production, we might move to a separate committed table
-                # For now, keep for recovery purposes
     
     def rollback_transaction(self, txid: int) -> None:
         """Mark transaction as aborted"""
@@ -81,12 +78,13 @@ class Transaction:
     - Durability: Write-Ahead Logging (WAL) with redo logs
     """
     
-    def __init__(self, txid: int, tx_table: TransactionTable, lock_table: LockTable, redo_record: RedoRecord, undo_record: UndoRecord):
+    def __init__(self, txid: int, tx_table: TransactionTable, lock_table: LockTable, redo_record: RedoRecord, undo_record: UndoRecord, operation: Any):
         self.txid = txid
         self.tx_table = tx_table
         self.lock_table = lock_table
         self.redo_record = redo_record
         self.undo_record = undo_record
+        self.operation = operation
         self.status = TransactionStatus.ACTIVE
         self.locked_rows: set[int] = set()
         
@@ -115,13 +113,13 @@ class Transaction:
             print(f"[TX-{self.txid}] Released lock on row {row_id}")
         self.locked_rows.clear()
     
-    def add_undo_record(self, record: UndoRecord) -> None:
+    def add_undo_record(self, record: UndoRecordModel) -> None:
         """Add undo record for rollback support"""
         self.undo_record.append(record)
         
-    def add_redo_lsn(self, lsn: int) -> None:
+    def add_redo_record(self, record: RedoLogRecordModel) -> None:
         """Track redo log LSN for durability"""
-        self.redo_record.append(lsn)
+        self.redo_record.append(record)
     
     def commit(self) -> None:
         """
@@ -148,7 +146,6 @@ class Transaction:
         # Phase 3: Release locks
         self.release_locks()
         
-        # Clear undo records (no longer needed)
         self.undo_record.clear()
         print(f"[TX-{self.txid}] Transaction committed successfully")
     
@@ -165,7 +162,7 @@ class Transaction:
         print(f"[TX-{self.txid}] ROLLBACK transaction")
         
         # Apply undo records in reverse order
-        for undo_record in reversed(self.undo_records):
+        for undo_record in reversed(self.undo_record.records):
             self._apply_undo_record(undo_record)
         
         # Mark as aborted
@@ -177,23 +174,22 @@ class Transaction:
         
         print(f"[TX-{self.txid}] Transaction rolled back successfully")
     
-    # def _apply_undo_record(self, undo_record: UndoRecord) -> None:
-    #     """Apply a single undo record to restore previous state"""
-    #     print(f"[TX-{self.txid}] Applying undo: {undo_record.operation} on row {undo_record.row_id}")
+    def _apply_undo_record(self, undo_record: UndoRecord) -> None:
+        """Apply a single undo record to restore previous state"""
+        print(f"[TX-{self.txid}] Applying undo: {undo_record.operation} on row {undo_record.row_id}")
         
-    #     if undo_record.operation == "INSERT":
-    #         # Undo INSERT: Delete the row
-    #         self.engine._delete_row_internal(undo_record.row_id, undo_record.page_id)
-    #     elif undo_record.operation == "UPDATE":
-    #         # Undo UPDATE: Restore old value
-    #         self.engine._update_row_internal(
-    #             undo_record.row_id, 
-    #             undo_record.old_value, 
-    #             undo_record.page_id
-    #         )
-    #     elif undo_record.operation == "DELETE":
-    #         # Undo DELETE: Re-insert the row
-    #         self.engine._insert_row_internal(
-    #             undo_record.old_value, 
-    #             undo_record.page_id
-    #         )
+        if undo_record.operation == "INSERT":
+            # Undo INSERT: Delete the row
+            self.operation.delete_row(undo_record.row_id, undo_record.page_id)
+        elif undo_record.operation == "UPDATE":
+            # Undo UPDATE: Restore old value
+            self.operation.update_row(
+                undo_record.row_id, 
+                undo_record.old_value,
+                undo_record.page_id
+            )
+        elif undo_record.operation == "DELETE":
+            # Undo DELETE: Re-insert the row
+            self.operation.insert_row(
+                undo_record.old_value
+            )

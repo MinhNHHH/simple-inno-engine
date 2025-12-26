@@ -24,18 +24,14 @@ class Disk:
     # Store all disk pages into a JSON file called 'disk.json'
     def dump_to_json(self, filename="disk.json"):
         import json
-        # Prepare serializable dict: page_id -> page content as dict
         def page_to_dict(page):
             d = {"page_id": page.page_id}
-            # Dump other attributes if they exist
             for attr in dir(page):
                 if attr.startswith("_") or attr in ("page_id", "pinned", "pin_count", "dirty"):
                     continue
                 v = getattr(page, attr)
-                # Try to serialize basic types, skip un-serializable fields
                 if isinstance(v, (int, str, list, dict, float, bool, type(None))):
                     d[attr] = v
-            # Optionally include state
             d["pinned"] = getattr(page, "pinned", False)
             d["pin_count"] = getattr(page, "pin_count", 0)
             d["dirty"] = getattr(page, "dirty", False)

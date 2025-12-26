@@ -26,7 +26,6 @@ class LockTable:
     def __init__(self):
         self.locks: dict[int, RowLock] = {}  # row_id -> RowLock
         self.lock = Lock()  # Thread-safe access
-        self.wait_timeout = 5  # seconds to wait for a lock
     
     def acquire_lock(self, txid: int, row_id: int, lock_type: str = LockType.EXCLUSIVE) -> bool:
         """
@@ -34,7 +33,6 @@ class LockTable:
         Returns True if lock acquired, False if lock held by another transaction
         """
         with self.lock:
-            # Check if row is already locked
             if row_id in self.locks:
                 existing_lock = self.locks[row_id]
                 
@@ -43,8 +41,6 @@ class LockTable:
                     return True
                 
                 # Row is locked by another transaction
-                # In production, we'd implement lock waiting/queuing
-                # For now, return False (lock not available)
                 return False
             
             # Acquire the lock

@@ -1,8 +1,14 @@
 from engine.engine import InnoEngine
+from memory.index import BPlusTree
 
 def main():
-    engine = InnoEngine()
-    
+    index = BPlusTree.load_from_json(t=3)
+    if not index:
+        index = BPlusTree(t=3)  
+    engine = InnoEngine(index=index)
+    engine.disk.load_from_json()
+    engine.operation.current_page_id = engine.disk.get_current_page_id()
+
     print("=== Inserting 24 rows ===\n")
     data = [
         (1, "Bob"), (2, "Carol"), (3, "Dave"), (4, "Eve"), (5, "Frank"), 
@@ -10,7 +16,8 @@ def main():
         (11, "Mason"), (12, "Nathan"), (13, "Olivia"), (14, "Paul"), 
         (15, "Quincy"), (16, "Ryan"), (17, "Sarah"), (18, "Thomas"), 
         (19, "Uma"), (20, "Victoria"), (21, "William"), (22, "Xavier"), 
-        (23, "Yara"), (24, "Zara")
+        (23, "Yara"), (24, "Zara"),
+        (25, "Yara25"), (26, "Zara26")
     ]
     
     for row in data:

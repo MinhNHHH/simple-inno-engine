@@ -5,7 +5,7 @@ class BPlusTreeNode:
     def __init__(self, t, leaf=False):
         self.t = t  # minimum degree (defines the range for number of keys)
         self.keys: list[int] = []  # row_ids
-        self.values: list[int] = []  # page_ids (only used in leaf nodes)
+        self.values: list[int] = []  # page_ids
         self.children: list['BPlusTreeNode'] = []  # child pointers
         self.leaf = leaf  # true when node is leaf
         self.next = None  # pointer to next leaf (for range scans)
@@ -45,7 +45,6 @@ class BPlusTree:
         Returns (node, index) if found, or (None, None) if not found.
         """
         i = node.find_key_index(k)
-        
         # If found in this node
         if i < len(node.keys) and node.keys[i] == k:
             return node, i
@@ -100,6 +99,18 @@ class BPlusTree:
         if node is None:
             raise KeyError(f"Row {row_id} not found in index")
         node.values[idx] = new_page_id
+    
+    def delete_row_mapping(self, row_id: int) -> None:
+        """
+        Delete the mapping for a row_id from the index.
+        Note: This is a simplified delete that doesn't rebalance the tree.
+        """
+        node, idx = self.search(self.root, row_id)
+        if node is not None and node.leaf:
+            # Remove the key and value from the leaf node
+            del node.keys[idx]
+            del node.values[idx]
+
 
     def split_child(self, parent: BPlusTreeNode, i: int) -> None:
         """
@@ -250,11 +261,10 @@ class BPlusTree:
         def node_to_dict(node):
             d = {
                 "keys": node.keys,
-                "leaf": node.leaf
+                "leaf": node.leaf,
+                "values": node.values
             }
-            if node.leaf:
-                d["values"] = node.values
-            else:
+            if not node.leaf:
                 d["children"] = [node_to_dict(child) for child in node.children]
             return d
 
@@ -263,33 +273,26 @@ class BPlusTree:
             json.dump(tree_dict, f, indent=4)
     
     @classmethod
-    def load_from_json(cls, filename: str) -> 'BPlusTree':
+    def load_from_json(cls, t: int=2) -> 'BPlusTree':
         """Load and restore a B+Tree structure from a JSON file."""
         import json
 
         def dict_to_node(d, t):
             node = BPlusTreeNode(t, leaf=d["leaf"])
             node.keys = d["keys"]
-            
-            if d["leaf"]:
-                node.values = d.get("values", [])
-            else:
+            node.values = d.get("values", [])  # Load values for both leaf and internal nodes
+            if not d["leaf"]:
                 node.children = [dict_to_node(child, t) for child in d["children"]]
-            
             return node
 
-        with open(filename, "r") as f:
-            tree_dict = json.load(f)
-            
-            # Infer minimum degree t
-            inferred_t = 2
-            n_keys = len(tree_dict["keys"])
-            if n_keys > 0:
-                inferred_t = max(2, (n_keys + 1) // 2)
-            
-            b_plus_tree = cls(t=inferred_t)
-            b_plus_tree.root = dict_to_node(tree_dict, inferred_t)
-            return b_plus_tree
+        try:
+            with open("index.json", "r") as f:
+                tree_dict = json.load(f)
+                b_plus_tree = cls(t=t)
+                b_plus_tree.root = dict_to_node(tree_dict, t)
+                return b_plus_tree
+        except:
+            return None
 
 
 # Demo

@@ -41,6 +41,27 @@ class Disk:
             d["dirty"] = getattr(page, "dirty", False)
             return d
 
-        serializable = {pid: page_to_dict(page) for pid, page in self.pages.items()}
+        serializable = {int(pid): page_to_dict(page) for pid, page in self.pages.items()}
         with open(filename, "w") as f:
             json.dump(serializable, f, indent=4)
+
+    def load_from_json(self, filename="disk.json") -> None:
+        import json
+        try:
+            with open(filename, "r") as f:
+                data = json.load(f)
+            for pid, page_data in data.items():
+                page_data["rows"] = [tuple(v) for v in page_data["rows"].values()]
+                page = Page(rows={}, page_id=int(page_data["page_id"]), page_lsn=int(page_data["page_lsn"]))
+                for attr, value in page_data.items():
+                    if attr == "page_id":
+                        continue
+                    setattr(page, attr, value)
+                page.rows = {int(row[0]): row for _, row in enumerate(page_data["rows"])}
+                self.pages[int(pid)] = page
+        except:
+            return {}
+    def get_current_page_id(self) -> int:
+        if len(self.pages) == 0:
+            return 1
+        return max(self.pages.keys())

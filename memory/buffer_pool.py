@@ -1,5 +1,7 @@
 from memory.disks import Disk
 from memory.pages import Page
+from memory.double_write_buffer import DoublewriteBuffer
+
 import threading
 
 class PageNode:
@@ -22,10 +24,11 @@ class BufferPool:
         - When a page is written to the disk, it is marked as clean.
         - When a page is read from the disk, it is marked as clean.
     """
-    def __init__(self, capacity: int, disk: Disk):
+    def __init__(self, capacity: int, disk: Disk, double_write_buffer: DoublewriteBuffer):
         self.capacity = capacity
         self.pages : dict[int, PageNode] = {}  # page_id -> Page
         self.disk = disk
+        self.double_write_buffer = double_write_buffer
         self.head = PageNode(page=None)
         self.tail = PageNode(page=None)
         self.head.next = self.tail
@@ -42,7 +45,6 @@ class BufferPool:
             page = self.disk.get_page(page_id)
             self.add_page_to_memory(page)
             page.pin_count += 1
-            self.mark_dirty(page_id)
             print(f"Pages in buffer pool: {self.pages}")
             return page
     
@@ -83,8 +85,18 @@ class BufferPool:
             raise Exception("All pages are pinned and cannot be evicted")
         
         # At this point, lru.page.pin_count must be 0
+        # If page is dirty, we need to write it to disk using doublewrite buffer protocol
+        # This is the CRITICAL path for data durability and crash safety
         if lru.page.dirty:
+            # Write to doublewrite buffer
+            self.double_write_buffer.add_page(lru.page)
+            self.double_write_buffer.fsync()
+            
+            # Write to actual disk location
             self.disk.write_page(lru.page)
+            
+            # Clear DWB entry after successful write
+            self.double_write_buffer.clear()
         self._remove_node(lru)
         del self.pages[lru.page.page_id]
 
@@ -104,8 +116,31 @@ class BufferPool:
         self.pages[page_id].page.dirty = True
     
     def mark_clean_and_flush(self) -> None:
-        for page_id in self.pages:
-            page = self.pages[page_id].page
-            if page.dirty:
-                page.dirty = False
-                self.disk.write_page(page)
+        """
+        Flush all dirty pages using double-write buffer protocol
+        This is the CRITICAL path for data durability and crash safety
+        """
+        # Collect all dirty pages and add to DWB
+        dirty_pages = []
+        with self.lock:
+            for page_id in self.pages:
+                page = self.pages[page_id].page
+                if page.dirty:
+                    dirty_pages.append(page)
+                    self.double_write_buffer.add_page(page)
+        
+        if not dirty_pages:
+            return 
+        
+        # Flush DWB to disk (sequential write - creates backup)
+        print(f"[FLUSH] Writing {len(dirty_pages)} dirty pages via DWB")
+        self.double_write_buffer.fsync()
+        
+        # Write pages to their ACTUAL disk locations (permanent storage)
+        # THIS IS CRITICAL! DWB is just temporary backup, not the actual storage!
+        for page in dirty_pages:
+            page.dirty = False
+            self.disk.write_page(page)
+        
+        self.double_write_buffer.clear()
+        print(f"[FLUSH] Successfully flushed {len(dirty_pages)} pages")

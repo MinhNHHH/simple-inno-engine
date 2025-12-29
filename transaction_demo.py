@@ -164,8 +164,8 @@ def demo_durability():
     engine.tx_insert_row(tx1, (3, "Charlie", 35))
     
     print(f"\n--- Redo log entries before commit ---")
-    print(f"Number of redo log records: {len(engine.redo_record.records)}")
-    for record in engine.redo_record.records:
+    print(f"Number of redo log records: {len(tx1.redo_record.records)}")
+    for record in tx1.redo_record.records:
         print("1=====================",record)
         print(f"  LSN {record.lsn}: {record.action} on page {record.page_id}")
     
@@ -173,10 +173,10 @@ def demo_durability():
     tx1.commit()
     
     print(f"\n--- After commit (redo log flushed) ---")
-    print(f"Flushed LSN: {engine.redo_record.flushed_lsn}")
+    print(f"Flushed LSN: {tx1.redo_record.flushed_lsn}")
     
     # Save to disk
-    engine.redo_record.dump_to_json("redo_log.json")
+    tx1.redo_record.dump_to_json("redo_log.json")
     print("✓ Redo log saved to redo_log.json")
     
     print("\n✓ Durability demonstrated - Changes logged before commit\n")

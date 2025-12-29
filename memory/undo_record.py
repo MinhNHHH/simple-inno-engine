@@ -10,6 +10,10 @@ class UndoRecordModel(BaseModel):
 
 
 class UndoRecord:
+    """
+    InnoDB store old values of rows in undo log
+    That help rollback when transaction abort
+    """
     def __init__(self):
         self.records: list[UndoRecordModel] = []
 

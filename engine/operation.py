@@ -12,7 +12,6 @@ class Operation:
         self.index = index
         self.current_page_id = disk.get_current_page_id()
         self.rows_per_page = 10  # Max rows per page
-        self.next_lsn = 0
         self.lock = Lock()
 
     def get_page_id(self, row_id: int) -> int | None:
@@ -30,7 +29,6 @@ class Operation:
             raise Exception(f"Row {row_id} not found")
         
         page = self.buffer_pool.load_page(page_id)
-        print(page.rows)
         row = page.rows.get(row_id)
         self.buffer_pool.release_page(page_id)
         
@@ -39,7 +37,7 @@ class Operation:
         
         return row
     
-    def insert_row(self, row: tuple) -> None:
+    def insert_row(self, row: tuple, next_lsn: int) -> None:
         """
         Insert a new row into the database.
         Implements efficient page allocation - multiple rows per page.
@@ -60,7 +58,7 @@ class Operation:
                 page = self.buffer_pool.load_page(page_id)
             except Exception:
                 # Page doesn't exist on disk, create it
-                page = Page(page_id=page_id, rows={}, page_lsn=self.next_lsn)
+                page = Page(page_id=page_id, rows={}, page_lsn=next_lsn)
                 self.disk.write_page(page)
                 self.buffer_pool.add_page_to_memory(page)
                 page.pin_count += 1
@@ -129,8 +127,8 @@ class Operation:
         self.current_page_id = max(self._get_current_page_id_from_disk(), self._get_current_page_id_from_buffer_pool())
         return self.current_page_id
     
-    def shutdown(self) -> None:
-        """Clean shutdown: flush all dirty pages and save to disk."""
+    def checkpoint(self) -> None:
+        """Clean checkpoint: flush all dirty pages and save to disk."""
         print("Shutting down engine...")
         self.buffer_pool.mark_clean_and_flush()
         self.disk.dump_to_json("disk.json")

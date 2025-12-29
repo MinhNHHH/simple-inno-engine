@@ -16,8 +16,7 @@ def main():
         (11, "Mason"), (12, "Nathan"), (13, "Olivia"), (14, "Paul"), 
         (15, "Quincy"), (16, "Ryan"), (17, "Sarah"), (18, "Thomas"), 
         (19, "Uma"), (20, "Victoria"), (21, "William"), (22, "Xavier"), 
-        (23, "Yara"), (24, "Zara"),
-        (25, "Yara25"), (26, "Zara26")
+        (23, "Yara"), (24, "Zara"), (25, "Yara25"), (26, "Zara26")
     ]
     
     for row in data:
@@ -43,7 +42,7 @@ def main():
     
     # Shutdown and save
     print()
-    engine.shutdown()
+    engine.checkpoint()
 
     print()
     # Print stats

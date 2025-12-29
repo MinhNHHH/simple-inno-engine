@@ -78,8 +78,9 @@ class Transaction:
     - Durability: Write-Ahead Logging (WAL) with redo logs
     """
     
-    def __init__(self, txid: int, tx_table: TransactionTable, lock_table: LockTable, redo_record: RedoRecord, undo_record: UndoRecord, operation: Any):
+    def __init__(self, txid: int, next_lsn: int, tx_table: TransactionTable, lock_table: LockTable, redo_record: RedoRecord, undo_record: UndoRecord, operation: Any):
         self.txid = txid
+        self.next_lsn = next_lsn
         self.tx_table = tx_table
         self.lock_table = lock_table
         self.redo_record = redo_record
@@ -147,6 +148,7 @@ class Transaction:
         self.release_locks()
         
         self.undo_record.clear()
+        self.redo_record.clear()
         print(f"[TX-{self.txid}] Transaction committed successfully")
     
     def rollback(self) -> None:
@@ -191,5 +193,6 @@ class Transaction:
         elif undo_record.operation == "DELETE":
             # Undo DELETE: Re-insert the row
             self.operation.insert_row(
-                undo_record.old_value
+                undo_record.old_value,
+                self.next_lsn
             )

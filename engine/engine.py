@@ -13,18 +13,16 @@ from engine.operation import Operation
 class InnoEngine:
     def __init__(self, index: BPlusTree):
         self.disk = Disk()
-        self.buffer_pool = BufferPool(capacity=5, disk=self.disk)
+        self.doublewrite_buffer = DoublewriteBuffer(disk=self.disk)
+        self.buffer_pool = BufferPool(capacity=5, disk=self.disk, double_write_buffer=self.doublewrite_buffer)
         self.index = index
         self.operation = Operation(
             buffer_pool=self.buffer_pool,
             index=self.index,
             disk=self.disk
         )
-        self.redo_record = RedoRecord()
-        self.undo_record = UndoRecord()
         self.tx_table = TransactionTable()
         self.lock_table = LockTable()
-        self.doublewrite_buffer = DoublewriteBuffer()
         self.next_txid = 1
         self.next_lsn = 1
 
@@ -32,10 +30,12 @@ class InnoEngine:
         return self.operation.get_row(row_id)
 
     def insert_row(self, row: tuple) -> None:
-        self.operation.insert_row(row)
+        lsn = self.next_lsn
+        self.next_lsn += 1
+        self.operation.insert_row(row, lsn)
 
-    def shutdown(self) -> None:
-        self.operation.shutdown()
+    def checkpoint(self) -> None:
+        self.operation.checkpoint()
 
     def print_stats(self) -> None:
         """Print database statistics."""
@@ -54,9 +54,12 @@ class InnoEngine:
         Returns a Transaction object that can be used to perform operations
         """
         txid = self.next_txid
+        next_lsn = self.next_lsn
         self.next_txid += 1
-        
-        tx = Transaction(txid=txid, tx_table=self.tx_table, lock_table=self.lock_table, undo_record=self.undo_record, redo_record=self.redo_record, operation=self.operation)
+        self.next_lsn += 1
+        redo_record = RedoRecord()
+        undo_record = UndoRecord()
+        tx = Transaction(txid=txid, next_lsn=next_lsn, tx_table=self.tx_table, lock_table=self.lock_table, undo_record=undo_record, redo_record=redo_record, operation=self.operation)
         tx.begin()
         return tx
     
@@ -85,7 +88,7 @@ class InnoEngine:
         self.next_lsn += 1
         self._create_undo_redo_log(tx, row_id, page_id, "INSERT", lsn, record_data, None)
         # Perform the actual insert
-        self.operation.insert_row(row)
+        self.operation.insert_row(row, lsn)
         
         print(f"[TX-{tx.txid}] Inserted row {row_id} into page {page_id}")
     

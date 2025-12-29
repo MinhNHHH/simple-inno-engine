@@ -34,6 +34,16 @@ class InnoEngine:
         self.next_lsn += 1
         self.operation.insert_row(row, lsn)
 
+    def update_row(self, row_id: int, new_row: tuple) -> None:
+        lsn = self.next_lsn
+        self.next_lsn += 1
+        self.operation.update_row(row_id, new_row, lsn)
+
+    def delete_row(self, row_id: int) -> None:
+        lsn = self.next_lsn
+        self.next_lsn += 1
+        self.operation.delete_row(row_id, lsn)
+
     def checkpoint(self) -> None:
         self.operation.checkpoint()
 

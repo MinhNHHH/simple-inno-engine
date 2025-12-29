@@ -26,7 +26,6 @@ class DoublewriteBuffer:
         This does NOT write to disk yet - just prepares the page.
         """
         with self.lock:
-            # Store a copy to prevent concurrent modifications
             self.pages[page.page_id] = copy.deepcopy(page)
     
     def fsync(self) -> None:
@@ -41,10 +40,7 @@ class DoublewriteBuffer:
         with self.lock:
             if not self.pages:
                 return
-            
-            # Sequential write to DWB area
             for page_id, page in self.pages.items():
-                # Write to DWB storage area
                 self.dwb_storage[page_id] = copy.deepcopy(page)            
             self._persist_dwb_to_disk()
             print(f"[DWB] Wrote {len(self.pages)} pages to DWB sequential area")
@@ -93,8 +89,6 @@ class DoublewriteBuffer:
         """
         with self.lock:
             self.pages.clear()
-            # Note: We keep dwb_storage for potential recovery
-            # In production: DWB area is only cleared after checkpoint
     
     def clear_dwb_area(self) -> None:
         """
@@ -111,14 +105,12 @@ class DoublewriteBuffer:
                 print(f"[DWB] Error clearing DWB: {e}")
     
     def delete_page(self, page_id: int) -> None:
-        """Remove a page from DWB staging area."""
         with self.lock:
             if page_id not in self.pages:
                 raise Exception(f"Page {page_id} not found in DWB staging")
             del self.pages[page_id]
     
     def get_stats(self) -> dict:
-        """Get DWB statistics for monitoring."""
         with self.lock:
             return {
                 "staged_pages": len(self.pages),

@@ -48,7 +48,6 @@ class LockTable:
             return True
     
     def release_lock(self, txid: int, row_id: int) -> None:
-        """Release a lock on a row"""
         with self.lock:
             if row_id in self.locks:
                 existing_lock = self.locks[row_id]
@@ -56,7 +55,6 @@ class LockTable:
                     del self.locks[row_id]
     
     def release_all_locks(self, txid: int) -> None:
-        """Release all locks held by a transaction"""
         with self.lock:
             rows_to_release = [
                 row_id for row_id, lock in self.locks.items()
@@ -66,12 +64,10 @@ class LockTable:
                 del self.locks[row_id]
     
     def is_locked(self, row_id: int) -> bool:
-        """Check if a row is locked"""
         with self.lock:
             return row_id in self.locks
     
     def get_lock_holder(self, row_id: int) -> Optional[int]:
-        """Get the transaction ID holding the lock on a row"""
         with self.lock:
             if row_id in self.locks:
                 return self.locks[row_id].txid

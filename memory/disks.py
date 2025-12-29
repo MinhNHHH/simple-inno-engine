@@ -21,7 +21,6 @@ class Disk:
             raise Exception(f"Page {page_id} not found on disk")
         del self.pages[page_id]
 
-    # Store all disk pages into a JSON file called 'disk.json'
     def dump_to_json(self, filename="disk.json"):
         import json
         def page_to_dict(page):

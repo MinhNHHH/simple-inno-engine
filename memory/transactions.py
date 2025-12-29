@@ -8,7 +8,6 @@ from memory.redo_record import RedoRecord, RedoLogRecordModel
 from memory.locks import LockTable
 
 class TransactionStatus(Enum):
-    """Transaction status enumeration"""
     ACTIVE = "active"
     PREPARING = "preparing"
     COMMITTED = "committed"
@@ -16,7 +15,6 @@ class TransactionStatus(Enum):
 
 
 class TransactionTableEntry(BaseModel):
-    """Entry in the transaction table"""
     txid: int
     status: str
     
@@ -34,35 +32,29 @@ class TransactionTable:
         self.lock = Lock()
     
     def register_transaction(self, entry: TransactionTableEntry) -> None:
-        """Register a new transaction"""
         with self.lock:
             self.active[entry.txid] = entry
     
     def commit_transaction(self, txid: int) -> None:
-        """Mark transaction as committed"""
         with self.lock:
             if txid in self.active:
                 self.active[txid].status = TransactionStatus.COMMITTED.value
     
     def rollback_transaction(self, txid: int) -> None:
-        """Mark transaction as aborted"""
         with self.lock:
             if txid in self.active:
                 self.active[txid].status = TransactionStatus.ABORTED.value
     
     def get_transaction(self, txid: int) -> Optional[TransactionTableEntry]:
-        """Get transaction entry by ID"""
         with self.lock:
             return self.active.get(txid)
     
     def cleanup_transaction(self, txid: int) -> None:
-        """Remove transaction from active table (after commit/abort)"""
         with self.lock:
             if txid in self.active:
                 del self.active[txid]
     
     def get_active_transactions(self) -> list[int]:
-        """Get list of all active transaction IDs"""
         with self.lock:
             return [
                 txid for txid, entry in self.active.items()
@@ -90,7 +82,6 @@ class Transaction:
         self.locked_rows: set[int] = set()
         
     def begin(self) -> None:
-        """Begin transaction - register in transaction table"""
         print(f"[TX-{self.txid}] BEGIN transaction")
         entry = TransactionTableEntry(
             txid=self.txid,
@@ -99,7 +90,6 @@ class Transaction:
         self.tx_table.register_transaction(entry)
         
     def acquire_lock(self, row_id: int) -> bool:
-        """Acquire exclusive lock on a row (for isolation)"""
         if self.lock_table.acquire_lock(self.txid, row_id):
             self.locked_rows.add(row_id)
             print(f"[TX-{self.txid}] Acquired lock on row {row_id}")
@@ -108,18 +98,15 @@ class Transaction:
         return False
     
     def release_locks(self) -> None:
-        """Release all locks held by this transaction"""
         for row_id in self.locked_rows:
             self.lock_table.release_lock(self.txid, row_id)
             print(f"[TX-{self.txid}] Released lock on row {row_id}")
         self.locked_rows.clear()
     
     def add_undo_record(self, record: UndoRecordModel) -> None:
-        """Add undo record for rollback support"""
         self.undo_record.append(record)
         
     def add_redo_record(self, record: RedoLogRecordModel) -> None:
-        """Track redo log LSN for durability"""
         self.redo_record.append(record)
     
     def commit(self) -> None:
@@ -177,7 +164,6 @@ class Transaction:
         print(f"[TX-{self.txid}] Transaction rolled back successfully")
     
     def _apply_undo_record(self, undo_record: UndoRecord) -> None:
-        """Apply a single undo record to restore previous state"""
         print(f"[TX-{self.txid}] Applying undo: {undo_record.operation} on row {undo_record.row_id}")
         
         if undo_record.operation == "INSERT":

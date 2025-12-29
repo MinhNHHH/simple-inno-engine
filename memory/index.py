@@ -40,27 +40,16 @@ class BPlusTree:
         self.root = BPlusTreeNode(t, leaf=True)
 
     def search(self, node: BPlusTreeNode, k: int) -> tuple[BPlusTreeNode, int]:
-        """
-        Search for key k starting from node.
-        Returns (node, index) if found, or (None, None) if not found.
-        """
         i = node.find_key_index(k)
-        # If found in this node
         if i < len(node.keys) and node.keys[i] == k:
             return node, i
         
-        # If this node is a leaf, key is not present
         if node.leaf:
             return None, None
         
-        # Otherwise go to the appropriate child
         return self.search(node.children[i], k)
 
     def get_page_id(self, row_id: int) -> int | None:
-        """
-        Get the page_id where a row is stored.
-        Returns None if the row is not found.
-        """
         node, idx = self.search(self.root, row_id)
         if node:
             return node.values[idx]
@@ -91,24 +80,15 @@ class BPlusTree:
             self._insert_non_full(root, row_id, page_id)
 
     def update_page_id(self, row_id: int, new_page_id: int) -> None:
-        """
-        Update the page_id for an existing row.
-        Raises KeyError if the row doesn't exist.
-        """
         node, idx = self.search(self.root, row_id)
         if node is None:
             raise KeyError(f"Row {row_id} not found in index")
         node.values[idx] = new_page_id
     
     def delete_row_mapping(self, row_id: int) -> None:
-        """
-        Delete the mapping for a row_id from the index.
-        Note: This is a simplified delete that doesn't rebalance the tree.
-        """
         node, idx = self.search(self.root, row_id)
         if node is not None and node.leaf:
-            # Remove the key and value from the leaf node
-            del node.keys[idx]
+s            del node.keys[idx]
             del node.values[idx]
 
 
@@ -156,13 +136,9 @@ class BPlusTree:
         parent.values.insert(i, promoted_value)
 
     def _insert_non_full(self, node: BPlusTreeNode, k: int, v: int) -> None:
-        """
-        Insert key k with value v into node that is not full.
-        """
         i = len(node.keys) - 1
         
         if node.leaf:
-            # Insert key and value into leaf node
             node.keys.append(None)
             node.values.append(None)
             
@@ -189,20 +165,15 @@ class BPlusTree:
             self._insert_non_full(node.children[i], k, v)
 
     def traverse(self, node=None) -> list[tuple[int, int]]:
-        """
-        Return an in-order list of (key, value) pairs from the tree.
-        """
         if node is None:
             node = self.root
         
         result = []
         
         if node.leaf:
-            # Leaf node: return all (key, value) pairs
             for i in range(len(node.keys)):
                 result.append((node.keys[i], node.values[i]))
         else:
-            # Internal node: traverse children
             for i in range(len(node.keys)):
                 result.extend(self.traverse(node.children[i]))
             # Don't forget the last child
@@ -211,11 +182,6 @@ class BPlusTree:
         return result
 
     def traverse_leaves(self) -> list[tuple[int, int]]:
-        """
-        Traverse only the leaf nodes using the linked list.
-        This is more efficient for range scans.
-        """
-        # Find leftmost leaf
         node = self.root
         while not node.leaf:
             node = node.children[0]
